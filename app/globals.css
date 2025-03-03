@@ -115,3 +115,19 @@ body {
   animation: float 6s ease-in-out infinite;
 }
 
+/* Landing page specific styles */
+.landing-page {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-page-nav {
+  position: relative;
+  z-index: 1000;
+}
+
+.landing-page-menu {
+  position: fixed;
+  z-index: 999;
+}
+

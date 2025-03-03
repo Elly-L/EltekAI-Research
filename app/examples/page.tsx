@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { ArrowRight } from "lucide-react"
 
 interface Example {
@@ -225,13 +225,23 @@ Footer: "Vaccines: Small shots, big impact on global health"`,
       </div>
 
       <Dialog open={!!selectedExample} onOpenChange={() => setSelectedExample(null)}>
-        <DialogContent className="max-w-4xl bg-black/90 border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">{selectedExample?.title}</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[80vh] bg-[#1a1f2e]/95 border-white/20 text-white overflow-y-auto">
+          <DialogHeader className="border-b border-white/10 pb-4">
+            <DialogTitle className="text-3xl font-bold">{selectedExample?.title}</DialogTitle>
           </DialogHeader>
-          <div className="mt-4 space-y-6">
-            <pre className="whitespace-pre-wrap">{selectedExample?.content}</pre>
+          <div className="pr-6 py-4">
+            <div className="space-y-6">
+              <div className="text-lg text-gray-300">{selectedExample?.description}</div>
+              <div className="space-y-4">
+                <pre className="whitespace-pre-wrap font-mono text-sm text-gray-300">{selectedExample?.content}</pre>
+              </div>
+            </div>
           </div>
+          <DialogFooter className="border-t border-white/10 pt-4">
+            <Button onClick={() => setSelectedExample(null)} className="bg-purple-600 hover:bg-purple-700 text-white">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

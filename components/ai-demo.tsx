@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sparkles, ArrowUp, Paperclip } from "lucide-react"
+import { Sparkles, Paperclip, Send, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
@@ -27,6 +27,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
   const [file, setFile] = useState<File | null>(null)
   const [showDisclaimer, setShowDisclaimer] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
 
   useEffect(() => {
     if (initialPrompt) {
@@ -38,6 +39,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
       setFile(selectedFile)
+      setUploadedFiles((prev) => [...prev, selectedFile.name])
       toast.success(`File "${selectedFile.name}" uploaded successfully`)
     }
   }
@@ -102,51 +104,65 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
     setLoading(false)
   }
 
-  const handleShare = async () => {
-    const conversationText = messages
-      .map((msg) => `${msg.role === "user" ? "You" : "EltekAI"}: ${msg.content}`)
-      .join("\n\n")
-
-    try {
-      await navigator.clipboard.writeText(conversationText)
-      toast.success("Conversation copied to clipboard!")
-    } catch (err) {
-      toast.error("Failed to copy conversation")
-    }
-  }
-
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [messagesEndRef])
+  }, [messagesEndRef]) //Corrected dependency
 
   return (
     <>
-      <Card className="w-full bg-black/50 border-white/20 h-[500px] flex flex-col">
+      <Card className="w-full bg-black/50 border-white/20 h-[calc(100vh-200px)] flex flex-col">
         <CardHeader className="border-b border-white/10">
           <CardTitle className="text-xl font-bold text-white flex items-center">
             <Sparkles className="w-5 h-5 mr-2 text-purple-400" />
             EltekAI Research Assistant
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-grow overflow-y-auto mb-4 p-4 space-y-4">
+        {uploadedFiles.length > 0 && (
+          <div className="border-b border-white/10 p-4 bg-purple-900/20">
+            <h3 className="text-sm font-medium text-white mb-2">Uploaded Documents:</h3>
+            <div className="flex flex-wrap gap-2">
+              {uploadedFiles.map((fileName, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-purple-900/50 text-white text-sm px-3 py-1 rounded-full"
+                >
+                  <FileText className="w-4 h-4" />
+                  {fileName}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
           {messages.map((message, index) => (
-            <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              key={index}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} items-end space-x-2`}
+            >
               <div
                 className={`max-w-[80%] p-3 rounded-lg ${
-                  message.role === "user" ? "bg-purple-900/50 text-white ml-4" : "bg-gray-800 text-gray-300 mr-4"
+                  message.role === "user" ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-300"
                 }`}
               >
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </div>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  message.role === "user" ? "bg-blue-500" : "bg-green-500"
+                }`}
+              >
+                {message.role === "user" ? "U" : "AI"}
+              </div>
             </div>
           ))}
           {loading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-800 text-gray-300 p-3 rounded-lg mr-4">
+            <div className="flex justify-start items-end space-x-2">
+              <div className="bg-gray-800 text-gray-300 p-3 rounded-lg">
                 <p>EltekAI thinking...</p>
               </div>
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">AI</div>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -170,27 +186,38 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
               className="flex-grow bg-black/50 border-white/20 text-white placeholder-gray-400 resize-none"
               rows={1}
             />
-            <Button type="submit" size="icon" disabled={loading || (!input.trim() && !file)}>
-              <ArrowUp className="h-5 w-5" />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={loading || (!input.trim() && !file)}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Send className="h-5 w-5" />
             </Button>
           </form>
         </div>
       </Card>
 
       <Dialog open={showDisclaimer} onOpenChange={setShowDisclaimer}>
-        <DialogContent>
+        <DialogContent className="bg-black/90 border-white/20 text-white">
           <DialogHeader>
-            <DialogTitle>Disclaimer</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-2xl font-bold text-purple-400">Disclaimer</DialogTitle>
+            <DialogDescription className="text-gray-300">
               Please note that EltekAI is still under development. Responses may not be entirely accurate. Always
               double-check the information provided.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowDisclaimer(false)}>
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setShowDisclaimer(false)}
+              className="text-white border-white/20 hover:bg-white/10 bg-transparent"
+            >
               Cancel
             </Button>
-            <Button onClick={handleConfirmSubmit}>Proceed</Button>
+            <Button onClick={handleConfirmSubmit} className="bg-purple-600 hover:bg-purple-700 text-white">
+              Proceed
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

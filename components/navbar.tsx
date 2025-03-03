@@ -15,10 +15,11 @@ import { ProfileModal } from "@/components/profile-modal"
 export default function Navbar() {
   const router = useRouter()
   const pathname = usePathname()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userEmail, setUserEmail] = useState("")
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const isLandingPage = pathname === "/"
 
   useEffect(() => {
     // Check initial login state
@@ -44,6 +45,15 @@ export default function Navbar() {
     return () => window.removeEventListener("loginStateChange", handleLoginStateChange)
   }, [])
 
+  useEffect(() => {
+    // Close mobile menu when route changes
+    setIsMobileMenuOpen(false)
+  }, [router.asPath]) // Updated dependency
+
+  useEffect(() => {
+    console.log("Mobile menu state:", isMobileMenuOpen)
+  }, [isMobileMenuOpen])
+
   const handleLogout = () => {
     setIsLoggedIn(false)
     setUserEmail("")
@@ -51,12 +61,18 @@ export default function Navbar() {
     router.push("/")
   }
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen((prev) => !prev)
+  }
+
   return (
     <>
       <motion.nav
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="flex items-center justify-between px-6 py-4 bg-black/80 backdrop-blur-sm border-b border-white/10"
+        className={`flex items-center justify-between px-6 py-4 bg-black/80 backdrop-blur-sm border-b border-white/10 ${
+          isLandingPage ? "landing-page-nav" : ""
+        }`}
       >
         <Link href="/" className="flex items-center space-x-2">
           <Image
@@ -121,66 +137,78 @@ export default function Navbar() {
         </div>
 
         {/* Mobile menu button */}
-        <Button variant="ghost" size="icon" className="md:hidden text-white" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        <Button variant="ghost" size="icon" className="md:hidden text-white" onClick={toggleMobileMenu}>
           <Menu className="h-6 w-6" />
         </Button>
-
-        {/* Mobile menu */}
-        {isMenuOpen && (
-          <div className="absolute top-full left-0 right-0 bg-black/90 p-4 md:hidden">
-            <div className="flex flex-col space-y-2">
-              <NavLink href="/" isActive={pathname === "/"}>
-                Home
-              </NavLink>
-              <NavLink href="/features" isActive={pathname === "/features"}>
-                Features
-              </NavLink>
-              <NavLink href="/how-it-works" isActive={pathname === "/how-it-works"}>
-                How it Works
-              </NavLink>
-              <NavLink href="/examples" isActive={pathname === "/examples"}>
-                Examples
-              </NavLink>
-              <NavLink href="/pricing" isActive={pathname === "/pricing"}>
-                Pricing
-              </NavLink>
-              {isLoggedIn ? (
-                <>
-                  <Button variant="ghost" className="justify-start text-white" onClick={() => router.push("/profile")}>
-                    <User className="mr-2 h-4 w-4" /> Profile
-                  </Button>
-                  <Button variant="ghost" className="justify-start text-white" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" /> Log Out
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="ghost" className="justify-start text-white" onClick={() => router.push("/auth")}>
-                    Sign In
-                  </Button>
-                  <Button
-                    className="justify-start bg-purple-600 hover:bg-purple-700 text-white"
-                    onClick={() => router.push("/auth?tab=signup")}
-                  >
-                    Get Started
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </motion.nav>
+
+      {/* Mobile menu */}
+      <div
+        className={`fixed inset-x-0 top-[76px] bg-black/90 transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0 overflow-hidden"
+        } ${isLandingPage ? "landing-page-menu" : ""}`}
+      >
+        <div className="flex flex-col space-y-2 p-4">
+          <NavLink href="/" isActive={pathname === "/"} onClick={() => setIsMobileMenuOpen(false)}>
+            Home
+          </NavLink>
+          <NavLink href="/features" isActive={pathname === "/features"} onClick={() => setIsMobileMenuOpen(false)}>
+            Features
+          </NavLink>
+          <NavLink
+            href="/how-it-works"
+            isActive={pathname === "/how-it-works"}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            How it Works
+          </NavLink>
+          <NavLink href="/examples" isActive={pathname === "/examples"} onClick={() => setIsMobileMenuOpen(false)}>
+            Examples
+          </NavLink>
+          <NavLink href="/pricing" isActive={pathname === "/pricing"} onClick={() => setIsMobileMenuOpen(false)}>
+            Pricing
+          </NavLink>
+          {isLoggedIn ? (
+            <>
+              <Button variant="ghost" className="justify-start text-white" onClick={() => router.push("/profile")}>
+                <User className="mr-2 h-4 w-4" /> Profile
+              </Button>
+              <Button variant="ghost" className="justify-start text-white" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" /> Log Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" className="justify-start text-white" onClick={() => router.push("/auth")}>
+                Sign In
+              </Button>
+              <Button
+                className="justify-start bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={() => router.push("/auth?tab=signup")}
+              >
+                Get Started
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
       <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} userEmail={userEmail} />
     </>
   )
 }
 
-function NavLink({ href, children, isActive }: { href: string; children: React.ReactNode; isActive: boolean }) {
+function NavLink({
+  href,
+  children,
+  isActive,
+  onClick,
+}: { href: string; children: React.ReactNode; isActive: boolean; onClick?: () => void }) {
   return (
     <Link
       href={href}
       className={`text-gray-300 hover:text-white transition-colors relative group ${isActive ? "text-white" : ""}`}
+      onClick={onClick}
     >
       {children}
       <span

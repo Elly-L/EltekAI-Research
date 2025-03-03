@@ -37,43 +37,59 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] flex items-center justify-center">
-      <Card className="w-full max-w-md bg-black/50 border border-white/10">
+      <Card className="w-full max-w-md bg-black/80 border border-white/20 shadow-lg shadow-purple-500/20">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-white">
-            {activeTab === "signin" ? "Sign In" : "Get Started"}
+          <CardTitle className="text-3xl font-bold text-center text-white">
+            {activeTab === "signin" ? "Welcome Back" : "Join EltekAI"}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-black/50">
+              <TabsTrigger value="signin" className="text-white data-[state=active]:bg-purple-600">
+                Sign In
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="text-white data-[state=active]:bg-purple-600">
+                Sign Up
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="signin">
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <Input
                   type="email"
                   placeholder="Email"
-                  className="bg-black/50 border-white/20 text-white"
+                  className="bg-black/50 border-white/20 text-white placeholder-gray-400"
                   name="email"
                 />
-                <Input type="password" placeholder="Password" className="bg-black/50 border-white/20 text-white" />
-                <Button type="submit" className="w-full bg-white text-black hover:bg-white/90">
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  className="bg-black/50 border-white/20 text-white placeholder-gray-400"
+                />
+                <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
                   Sign In
                 </Button>
               </form>
             </TabsContent>
             <TabsContent value="signup">
               <form className="space-y-4" onSubmit={handleSubmit}>
-                <Input type="text" placeholder="Full Name" className="bg-black/50 border-white/20 text-white" />
+                <Input
+                  type="text"
+                  placeholder="Full Name"
+                  className="bg-black/50 border-white/20 text-white placeholder-gray-400"
+                />
                 <Input
                   type="email"
                   placeholder="Email"
-                  className="bg-black/50 border-white/20 text-white"
+                  className="bg-black/50 border-white/20 text-white placeholder-gray-400"
                   name="email"
                 />
-                <Input type="password" placeholder="Password" className="bg-black/50 border-white/20 text-white" />
-                <Button type="submit" className="w-full bg-white text-black hover:bg-white/90">
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  className="bg-black/50 border-white/20 text-white placeholder-gray-400"
+                />
+                <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
                   Sign Up
                 </Button>
               </form>

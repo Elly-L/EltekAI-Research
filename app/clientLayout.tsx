@@ -4,17 +4,12 @@ import type React from "react"
 import "./globals.css"
 import Navbar from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { useEffect } from "react"
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
-
   return (
     <html lang="en">
       <body>
