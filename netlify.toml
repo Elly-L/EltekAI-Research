@@ -1,0 +1,11 @@
+# netlify.toml (Phase 1 - Base Configuration)
+[build]
+  command = "npm install --legacy-peer-deps && npm run build"
+  publish = ".next"
+  functions = "functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[dev]
+  framework = "#static"
