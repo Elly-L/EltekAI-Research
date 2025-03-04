@@ -26,14 +26,29 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [showDisclaimer, setShowDisclaimer] = useState(false)
+  const [hasShownDisclaimer, setHasShownDisclaimer] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
+  const [cardHeight, setCardHeight] = useState("calc(100vh - 200px)")
 
   useEffect(() => {
     if (initialPrompt) {
       handleSubmit(new Event("submit") as React.FormEvent)
     }
   }, [initialPrompt])
+
+  useEffect(() => {
+    const updateHeight = () => {
+      const vh = window.innerHeight
+      const newHeight = `calc(${vh}px - 200px)`
+      setCardHeight(newHeight)
+    }
+
+    updateHeight()
+    window.addEventListener("resize", updateHeight)
+
+    return () => window.removeEventListener("resize", updateHeight)
+  }, [])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -52,67 +67,74 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
     e.preventDefault()
     if (!input.trim() && !file) return
 
-    setShowDisclaimer(true)
+    if (!hasShownDisclaimer) {
+      setShowDisclaimer(true)
+    } else {
+      await handleConfirmSubmit()
+    }
   }
 
   const handleConfirmSubmit = async () => {
     setShowDisclaimer(false)
+    setHasShownDisclaimer(true)
     if (!input.trim() && !file) return
 
     const userMessage: Message = {
       role: "user",
       content: file ? `[File uploaded: ${file.name}] ${input}` : input,
     }
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-    setFile(null)
-    setLoading(true)
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages, userMessage]
+      setInput("")
+      setFile(null)
+      setLoading(true)
 
-    try {
-      const response = await fetch("/api/generate", {
+      // Use the updated messages in the API call
+      fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ prompt: userMessage.content }),
       })
+        .then((response) => response.json())
+        .then((data) => {
+          const aiResponse = data.result
+          const aiMessage: Message = { role: "assistant", content: aiResponse }
+          setMessages((prev) => [...prev, aiMessage])
+        })
+        .catch((error) => {
+          console.error("Error:", error)
+          const errorMessage: Message = {
+            role: "assistant",
+            content: "An error occurred while processing your request.",
+          }
+          setMessages((prev) => [...prev, errorMessage])
+        })
+        .finally(() => {
+          setLoading(false)
+        })
 
-      const data = await response.json()
-      let aiResponse = data.result
-
-      // Check for identity queries
-      const identityQueries = [
-        "who are you",
-        "what's your name",
-        "which model are you",
-        "who created you",
-        "where are you from",
-      ]
-      if (identityQueries.some((query) => input.toLowerCase().includes(query))) {
-        aiResponse =
-          "My name is EltekAI Juja Model. I am still under development by Elly Logan at Eltek, a Kenyan tech startup. Note that not all my answers are correct since I'm still learning, be sure to double check my responses."
-      }
-
-      const aiMessage: Message = { role: "assistant", content: aiResponse }
-      setMessages((prev) => [...prev, aiMessage])
-    } catch (error) {
-      console.error("Error:", error)
-      const errorMessage: Message = { role: "assistant", content: "An error occurred while processing your request." }
-      setMessages((prev) => [...prev, errorMessage])
-    }
-
-    setLoading(false)
+      return updatedMessages
+    })
   }
 
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [messagesEndRef]) //Corrected dependency
+  }, [messagesEndRef]) // Changed dependency to messagesEndRef
+
+  useEffect(() => {
+    const cardContent = document.querySelector(".overflow-y-auto")
+    if (cardContent) {
+      cardContent.scrollTop = cardContent.scrollHeight
+    }
+  }, [messages])
 
   return (
     <>
-      <Card className="w-full bg-black/50 border-white/20 h-[calc(100vh-200px)] flex flex-col">
+      <Card className={`w-full bg-black/50 border-white/20 flex flex-col`} style={{ height: cardHeight }}>
         <CardHeader className="border-b border-white/10">
           <CardTitle className="text-xl font-bold text-white flex items-center">
             <Sparkles className="w-5 h-5 mr-2 text-purple-400" />
