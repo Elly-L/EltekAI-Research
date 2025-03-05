@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { HfInference } from "@huggingface/inference";
 
-const hf = new HfInference("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");
+const hf = new HfInference("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");
 const ASSISTANT_INFO =
   "I am EltekAI, an assistant currently under development by Elly Logan at Eltek. The model you're using is called Juja, a research-focused language model developed by Eltek. Current year: 2025.";
 
