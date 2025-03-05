@@ -1,14 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sparkles, Paperclip, Send, FileText } from "lucide-react"
-import { toast } from "sonner"
+import { Sparkles, Send } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { DocumentManager } from "@/components/document-manager"
 
 interface Message {
   role: "user" | "assistant"
@@ -24,12 +22,10 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
   const [input, setInput] = useState(initialPrompt)
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [file, setFile] = useState<File | null>(null)
   const [showDisclaimer, setShowDisclaimer] = useState(false)
   const [hasShownDisclaimer, setHasShownDisclaimer] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
-  const [cardHeight, setCardHeight] = useState("calc(100vh - 200px)")
+  const [documents, setDocuments] = useState<string[]>([])
+  const [autoScroll, setAutoScroll] = useState(true)
 
   useEffect(() => {
     if (initialPrompt) {
@@ -37,35 +33,9 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
     }
   }, [initialPrompt])
 
-  useEffect(() => {
-    const updateHeight = () => {
-      const vh = window.innerHeight
-      const newHeight = `calc(${vh}px - 200px)`
-      setCardHeight(newHeight)
-    }
-
-    updateHeight()
-    window.addEventListener("resize", updateHeight)
-
-    return () => window.removeEventListener("resize", updateHeight)
-  }, [])
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      setFile(selectedFile)
-      setUploadedFiles((prev) => [...prev, selectedFile.name])
-      toast.success(`File "${selectedFile.name}" uploaded successfully`)
-    }
-  }
-
-  const handlePaperclipClick = () => {
-    fileInputRef.current?.click()
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() && !file) return
+    if (!input.trim() && documents.length === 0) return
 
     if (!hasShownDisclaimer) {
       setShowDisclaimer(true)
@@ -77,148 +47,116 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
   const handleConfirmSubmit = async () => {
     setShowDisclaimer(false)
     setHasShownDisclaimer(true)
-    if (!input.trim() && !file) return
+    if (!input.trim() && documents.length === 0) return
 
     const userMessage: Message = {
       role: "user",
-      content: file ? `[File uploaded: ${file.name}] ${input}` : input,
+      content: documents.length > 0 ? `[Documents: ${documents.join(", ")}] ${input}` : input,
     }
-    setMessages((prevMessages) => {
-      const updatedMessages = [...prevMessages, userMessage]
-      setInput("")
-      setFile(null)
-      setLoading(true)
+    setMessages((prevMessages) => [userMessage, ...prevMessages])
+    setInput("")
+    setLoading(true)
+    setAutoScroll(false) // Disable auto-scroll when submitting
 
-      // Use the updated messages in the API call
-      fetch("/api/generate", {
+    try {
+      const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ prompt: userMessage.content }),
       })
-        .then((response) => response.json())
-        .then((data) => {
-          const aiResponse = data.result
-          const aiMessage: Message = { role: "assistant", content: aiResponse }
-          setMessages((prev) => [...prev, aiMessage])
-        })
-        .catch((error) => {
-          console.error("Error:", error)
-          const errorMessage: Message = {
-            role: "assistant",
-            content: "An error occurred while processing your request.",
-          }
-          setMessages((prev) => [...prev, errorMessage])
-        })
-        .finally(() => {
-          setLoading(false)
-        })
-
-      return updatedMessages
-    })
+      const data = await response.json()
+      const aiMessage: Message = { role: "assistant", content: data.result }
+      setMessages((prev) => [aiMessage, ...prev])
+    } catch (error) {
+      console.error("Error:", error)
+      const errorMessage: Message = {
+        role: "assistant",
+        content: "An error occurred while processing your request.",
+      }
+      setMessages((prev) => [errorMessage, ...prev])
+    } finally {
+      setLoading(false)
+      setAutoScroll(true) // Re-enable auto-scroll after response
+    }
   }
 
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+    if (autoScroll && messagesEndRef.current) {
+      const scrollContainer = messagesEndRef.current.parentElement
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0
+      }
     }
-  }, [messagesEndRef]) // Changed dependency to messagesEndRef
-
-  useEffect(() => {
-    const cardContent = document.querySelector(".overflow-y-auto")
-    if (cardContent) {
-      cardContent.scrollTop = cardContent.scrollHeight
-    }
-  }, [messages])
+  }, [autoScroll, messagesEndRef]) //Corrected useEffect dependency
 
   return (
-    <>
-      <Card className={`w-full bg-black/50 border-white/20 flex flex-col`} style={{ height: cardHeight }}>
-        <CardHeader className="border-b border-white/10">
-          <CardTitle className="text-xl font-bold text-white flex items-center">
+    <div className="flex flex-col h-screen bg-black/[0.96]">
+      <div className="flex-grow flex flex-col overflow-hidden">
+        <div className="bg-black/80 border-b border-white/10 p-4">
+          <h2 className="text-xl font-bold text-white flex items-center">
             <Sparkles className="w-5 h-5 mr-2 text-purple-400" />
             EltekAI Research Assistant
-          </CardTitle>
-        </CardHeader>
-        {uploadedFiles.length > 0 && (
-          <div className="border-b border-white/10 p-4 bg-purple-900/20">
-            <h3 className="text-sm font-medium text-white mb-2">Uploaded Documents:</h3>
-            <div className="flex flex-wrap gap-2">
-              {uploadedFiles.map((fileName, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-purple-900/50 text-white text-sm px-3 py-1 rounded-full"
-                >
-                  <FileText className="w-4 h-4" />
-                  {fileName}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        <CardContent className="flex-grow overflow-y-auto p-4 space-y-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} items-end space-x-2`}
-            >
-              <div
-                className={`max-w-[80%] p-3 rounded-lg ${
-                  message.role === "user" ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-300"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              </div>
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  message.role === "user" ? "bg-blue-500" : "bg-green-500"
-                }`}
-              >
-                {message.role === "user" ? "U" : "AI"}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start items-end space-x-2">
-              <div className="bg-gray-800 text-gray-300 p-3 rounded-lg">
-                <p>EltekAI thinking...</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">AI</div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </CardContent>
-        <div className="p-4 border-t border-white/10">
-          <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt"
-            />
-            <Button type="button" size="icon" variant="ghost" className="text-white" onClick={handlePaperclipClick}>
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            <Textarea
-              placeholder="Enter your research topic or question..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="flex-grow bg-black/50 border-white/20 text-white placeholder-gray-400 resize-none"
-              rows={1}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={loading || (!input.trim() && !file)}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-          </form>
+          </h2>
         </div>
-      </Card>
+        <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-black/20">
+          <div className="max-w-4xl mx-auto p-4 space-y-4 flex flex-col-reverse">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} items-end space-x-2`}
+              >
+                <div
+                  className={`max-w-[80%] p-3 rounded-lg ${
+                    message.role === "user" ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-300"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                </div>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    message.role === "user" ? "bg-blue-500" : "bg-green-500"
+                  }`}
+                >
+                  {message.role === "user" ? "U" : "AI"}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div className="flex justify-start items-end space-x-2">
+                <div className="bg-gray-800 text-gray-300 p-3 rounded-lg">
+                  <p>EltekAI thinking...</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">AI</div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+        <div className="bg-black/80 border-t border-white/10 p-4">
+          <div className="max-w-4xl mx-auto">
+            <DocumentManager documents={documents} setDocuments={setDocuments} />
+            <form onSubmit={handleSubmit} className="flex items-center space-x-2 mt-4">
+              <Textarea
+                placeholder="Enter your research topic or question..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="flex-grow bg-black/50 border-white/20 text-white placeholder-gray-400 resize-none"
+                rows={1}
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={loading || (!input.trim() && documents.length === 0)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
 
       <Dialog open={showDisclaimer} onOpenChange={setShowDisclaimer}>
         <DialogContent className="bg-black/90 border-white/20 text-white">
@@ -243,7 +181,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   )
 }
 

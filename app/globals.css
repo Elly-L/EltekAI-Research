@@ -131,3 +131,22 @@ body {
   z-index: 999;
 }
 
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: theme("colors.purple.500");
+  border-radius: 3px;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: theme("colors.purple.500") rgba(0, 0, 0, 0.1);
+}
+
