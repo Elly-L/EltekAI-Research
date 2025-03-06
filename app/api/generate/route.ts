@@ -1,131 +1,144 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server"
 
-// Read the API key and endpoint from environment variables
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_API_URL = process.env.OPENROUTER_API_URL || "https://openrouter.ai/api/v1/chat/completions";
-
+const OPENROUTER_API_KEY = "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"
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 const ASSISTANT_INFO =
-  "I am EltekAI, an assistant currently under development by Elly Logan at Eltek. The model you're using is called Juja, a research-focused language model developed by Eltek. Current year: 2025.";
+  "I am EltekAI, an assistant currently under development by Elly Logan at Eltek. The model you're using is called Juja, a research-focused language model developed by Eltek. Current year: 2025."
 
 export async function POST(req: Request) {
+  const { prompt, previousMessages } = await req.json()
+  const trimmedPrompt = prompt.trim().toLowerCase()
+
+  // Fixed responses for specific queries.
+  if (trimmedPrompt === "what's your name?" || trimmedPrompt === "what is your name?") {
+    return NextResponse.json({
+      answer: `My name is EltekAI. ${ASSISTANT_INFO}`,
+    })
+  }
+
+  if (
+    trimmedPrompt === "which model are you?" ||
+    trimmedPrompt === "which model are you" ||
+    trimmedPrompt === "what model are you?" ||
+    trimmedPrompt === "what model are you"
+  ) {
+    return NextResponse.json({
+      answer: "I am EltekAI, and I use Juja, a research-focused language model developed by Eltek.",
+    })
+  }
+
+  // Fixed response for queries about the specific model.
+  if (trimmedPrompt.includes("specific model")) {
+    return NextResponse.json({
+      answer:
+        "The specific model of this assistant is Juja, a research-focused language model developed by Eltek, with Elly Logan as the current lead developer.",
+    })
+  }
+
+  if (
+    trimmedPrompt === "who is the developer?" ||
+    trimmedPrompt === "who is the developer" ||
+    trimmedPrompt === "who developed you?" ||
+    trimmedPrompt === "who developed you"
+  ) {
+    return NextResponse.json({
+      answer: "I am EltekAI, developed by Eltek, a Kenyan AI startup.",
+    })
+  }
+
+  // Short responses for common, simple prompts.
+  const shortResponses = {
+    hi: "Hello! I'm EltekAI, your research assistant. How can I help you today?",
+    hello: "Hello! I'm EltekAI, your research assistant. How can I help you today?",
+    hey: "Hello! I'm EltekAI, your research assistant. How can I help you today?",
+    thanks: "You're welcome!",
+    "thank you": "You're welcome!",
+    bye: "Goodbye! Have a great day!",
+    goodbye: "Goodbye! Have a great day!",
+    "how are you": "I'm here to help you. How can I assist you today?",
+    "how are you?": "I'm here to help you. How can I assist you today?",
+    "what's up": "I'm here and ready to help! What can I do for you today?",
+    "what's up?": "I'm here and ready to help! What can I do for you today?",
+  }
+  if (shortResponses[trimmedPrompt]) {
+    return NextResponse.json({ answer: shortResponses[trimmedPrompt] })
+  }
+
+  // System message for the AI
+  const systemMessage = `${ASSISTANT_INFO}
+You are an expert research assistant and content transformer. Your primary role is to convert lengthy research documents into engaging and accessible content. You can transform a 50-page research paper on climate change into a concise 2-page executive summary, generate a 15-minute podcast transcript from a detailed economics paper, or create a visually engaging presentation outline that highlights key insights. Your answers should be detailed, comprehensive, and tailored for a student audience using the latest research information available as of 2025.
+
+Provide a detailed chain-of-thought explanation in bullet points before giving your final answer. When finished, start your final answer with "Final Answer:". Do not include the above introduction in your answer.`
+
+  // Build conversation history
+  const messages = [
+    { role: "system", content: systemMessage },
+    ...(previousMessages?.map((msg: { role: string; content: string }) => ({
+      role: msg.role === "user" ? "user" : "assistant",
+      content: msg.content,
+    })) || []),
+    { role: "user", content: prompt },
+  ]
+
   try {
-    const { prompt, previousMessages } = await req.json();
-    const trimmedPrompt = prompt.trim().toLowerCase();
-
-    // Fixed responses for specific queries.
-    const fixedResponses: Record<string, string> = {
-      "what's your name?": `My name is EltekAI. ${ASSISTANT_INFO}`,
-      "what is your name?": `My name is EltekAI. ${ASSISTANT_INFO}`,
-      "which model are you?": "I am EltekAI, and I use Juja, a research-focused language model developed by Eltek.",
-      "who is the developer?": "I am EltekAI, developed by Eltek, a Kenyan AI startup.",
-      "who developed you?": "I am EltekAI, developed by Eltek, a Kenyan AI startup.",
-    };
-
-    if (fixedResponses[trimmedPrompt]) {
-      return NextResponse.json({ result: fixedResponses[trimmedPrompt] });
-    }
-
-    // Short, common responses.
-    const shortResponses: Record<string, string> = {
-      hi: "Hello! I'm EltekAI, your research assistant. How can I help you today?",
-      hello: "Hello! I'm EltekAI, your research assistant. How can I help you today?",
-      hey: "Hello! I'm EltekAI, your research assistant. How can I help you today?",
-      thanks: "You're welcome!",
-      "thank you": "You're welcome!",
-      bye: "Goodbye! Have a great day!",
-      goodbye: "Goodbye! Have a great day!",
-    };
-
-    if (shortResponses[trimmedPrompt]) {
-      return NextResponse.json({ result: shortResponses[trimmedPrompt] });
-    }
-
-    // Limit conversation history to last 3 messages to reduce token usage.
-    const recentMessages = previousMessages
-      ?.slice(-3)
-      .map((msg: any) => msg.content)
-      .join("\n") || "";
-
-    const contextPrompt = `${ASSISTANT_INFO}
-
-Previous conversation:
-${recentMessages}
-
-Question: ${prompt}
-
-Reasoning:
-`;
-
-    // Prepare the payload according to OpenRouter's API format
-    const payload = {
-      model: "mistralai/mistral-small-24b-instruct-2501:free",
-      inputs: contextPrompt,
-      parameters: {
-        max_new_tokens: 250,
-        temperature: 0.5,
-        top_p: 0.8,
-        top_k: 20,
-        repetition_penalty: 1.2,
-        use_cache: true,
-      },
-      options: {
-        use_cache: true,
-        wait_for_model: true,
-      },
-    };
-
     const response = await fetch(OPENROUTER_API_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://eltekai.vercel.app/", // Replace with your actual domain
+        "X-Title": "EltekAI", // Replace with your app's name
       },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify({
+        model: "openai/gpt-3.5-turbo",
+        messages: messages,
+      }),
+    })
 
     if (!response.ok) {
-      // Log and return error details for debugging
-      const errorData = await response.json();
-      console.error("Error from OpenRouter:", errorData);
-      return NextResponse.json(
-        { error: errorData },
-        { status: response.status }
-      );
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const data = await response.json();
+    const data = await response.json()
 
-    // Extract generated text.
-    const generatedText = data.choices?.[0]?.message?.content || "";
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error("Unexpected API response structure:", data)
+      throw new Error("Unexpected API response structure")
+    }
 
-    // Split reasoning and answer if possible.
-    const finalAnswerMarker = "Final Answer:";
-    let reasoningText = "";
-    let answerText = "";
-    const markerIndex = generatedText.indexOf(finalAnswerMarker);
+    const generatedText = data.choices[0].message.content
 
-    if (markerIndex !== -1) {
-      reasoningText = generatedText.slice(0, markerIndex).trim();
-      answerText = generatedText
-        .slice(markerIndex + finalAnswerMarker.length)
-        .trim();
+    if (typeof generatedText !== "string") {
+      console.error("Generated text is not a string:", generatedText)
+      throw new Error("Generated text is not a string")
+    }
+
+    const finalAnswerMarker = "Final Answer:"
+    let reasoning = ""
+    let answer = ""
+    const finalAnswerIndex = generatedText.indexOf(finalAnswerMarker)
+    if (finalAnswerIndex !== -1) {
+      reasoning = generatedText.slice(0, finalAnswerIndex).trim()
+      answer = generatedText.slice(finalAnswerIndex + finalAnswerMarker.length).trim()
     } else {
-      answerText = generatedText.trim();
+      answer = generatedText.trim()
     }
 
-    // Remove repeated question if any.
-    answerText = answerText.replace(`Question: ${prompt}`, "").trim();
+    // Replace any occurrence of "OpenAI" or "GPT" with "Eltek"
+    answer = answer.replace(/OpenAI|GPT/g, "Eltek")
+    reasoning = reasoning.replace(/OpenAI|GPT/g, "Eltek")
 
-    // Replace any occurrences of "Mistral AI" with "Eltek"
-    answerText = answerText.replace(/Mistral AI/g, "Eltek");
-    reasoningText = reasoningText.replace(/Mistral AI/g, "Eltek");
-
-    return NextResponse.json({ reasoning: reasoningText, answer: answerText });
-  } catch (error: any) {
-    console.error("Server error:", error);
+    return NextResponse.json({ answer, reasoning })
+  } catch (error) {
+    console.error("Error in generate route:", error)
+    if (error instanceof Error) {
+      console.error("Error message:", error.message)
+      console.error("Error stack:", error.stack)
+    }
     return NextResponse.json(
-      { error: "An error occurred while processing your request." },
-      { status: 500 }
-    );
+      { error: "An error occurred while processing your request. Please try again later." },
+      { status: 500 },
+    )
   }
 }
+
