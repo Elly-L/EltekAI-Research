@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { HfInference } from "@huggingface/inference";
 
-const hf = new HfInference("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");
+const hf = new HfInference(process.env.OPENROUTER_API_KEY as string);
+
 const ASSISTANT_INFO =
   "I am EltekAI, an assistant currently under development by Elly Logan at Eltek. The model you're using is called Juja, a research-focused language model developed by Eltek. Current year: 2025.";
 
@@ -52,7 +53,7 @@ Reasoning:
 
   try {
     const response = await hf.textGeneration({
-      model: "mistralai/Mistral-7B-Instruct-v0.3",
+      model: "mistralai/mistral-small-24b-instruct-2501:free",
       inputs: contextPrompt,
       parameters: {
         max_new_tokens: 250, // Reduced from 500 to save credits
