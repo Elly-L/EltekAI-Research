@@ -11,6 +11,8 @@ import { DocumentManager } from "@/components/document-manager"
 interface Message {
   role: "user" | "assistant"
   content: string
+  reasoning?: string
+  showReasoning?: boolean
 }
 
 interface AIDemoProps {
@@ -66,8 +68,18 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
         },
         body: JSON.stringify({ prompt: userMessage.content }),
       })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
       const data = await response.json()
-      const aiMessage: Message = { role: "assistant", content: data.result }
+      const aiMessage: Message = {
+        role: "assistant",
+        content: data.answer,
+        reasoning: data.reasoning,
+        showReasoning: false,
+      }
       setMessages((prev) => [aiMessage, ...prev])
     } catch (error) {
       console.error("Error:", error)
@@ -89,7 +101,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
         scrollContainer.scrollTop = 0
       }
     }
-  }, [autoScroll, messagesEndRef]) //Corrected useEffect dependency
+  }, [autoScroll]) //Corrected useEffect dependency
 
   return (
     <div className="flex flex-col h-screen bg-black/[0.96]">
@@ -113,6 +125,12 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.reasoning && message.showReasoning && (
+                    <details>
+                      <summary>Reasoning</summary>
+                      <p className="whitespace-pre-wrap">{message.reasoning}</p>
+                    </details>
+                  )}
                 </div>
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center ${
