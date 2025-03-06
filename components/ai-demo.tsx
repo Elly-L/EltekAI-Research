@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Sparkles, Send } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { DocumentManager } from "@/components/document-manager"
+import { toast } from "sonner"
 
 interface Message {
   role: "user" | "assistant"
@@ -60,6 +61,12 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
     setLoading(true)
     setAutoScroll(false) // Disable auto-scroll when submitting
 
+    // Show the "EltekAI thinking" toast
+    const toastId = toast.loading("EltekAI thinking...", {
+      duration: Number.POSITIVE_INFINITY,
+      position: "bottom-center",
+    })
+
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -91,6 +98,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
     } finally {
       setLoading(false)
       setAutoScroll(true) // Re-enable auto-scroll after response
+      toast.dismiss(toastId) // Dismiss the "EltekAI thinking" toast
     }
   }
 
@@ -101,7 +109,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
         scrollContainer.scrollTop = 0
       }
     }
-  }, [autoScroll]) //Corrected useEffect dependency
+  }, [messages, autoScroll])
 
   return (
     <div className="flex flex-col h-screen bg-black/[0.96]">
@@ -113,7 +121,7 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
           </h2>
         </div>
         <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-black/20">
-          <div className="max-w-4xl mx-auto p-4 space-y-4 flex flex-col-reverse">
+          <div className="max-w-4xl mx-auto p-4 space-y-6 flex flex-col-reverse">
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -141,14 +149,6 @@ export function AIDemo({ initialPrompt = "" }: AIDemoProps) {
                 </div>
               </div>
             ))}
-            {loading && (
-              <div className="flex justify-start items-end space-x-2">
-                <div className="bg-gray-800 text-gray-300 p-3 rounded-lg">
-                  <p>EltekAI thinking...</p>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">AI</div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
         </div>
